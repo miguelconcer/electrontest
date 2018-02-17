@@ -15,10 +15,8 @@
   "author": "Miguel Contreras",
   "license": "MIT",
   "repository": "https://github.com/miguelconcer/electrontest",
-  "dependencies": {
-    "electron": "^1.7.9"
-  },
   "devDependencies": {
+    "electron": "^1.7.9",
     "electron-packager": "^9.1.0"
   }
 }
