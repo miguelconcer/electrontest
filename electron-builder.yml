@@ -1,0 +1,4 @@
+appId: AsinBot_id
+publish:
+    provider: github
+    token: Ba29dc1053978c5a8a431cf4631aeddac067ef1e

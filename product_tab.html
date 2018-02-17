@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <title>Helio Desktop App</title>
+    <!-- Compiled and minified CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/css/materialize.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="css/helio.css">
+</head>
+
+<body class="grey lighten-4">
+
+
+
+
+  <!-- Insert this line above script imports  -->
+  <script>if (typeof module === 'object') {window.module = module; module = undefined;}</script>
+
+  <script
+      src="https://code.jquery.com/jquery-3.2.1.js"
+      integrity="sha256-DZAnKJ/6XZ9si04Hgrsxu/8s717jcIzLy3oi35EouyE="
+      crossorigin="anonymous">
+  </script>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/0.100.2/js/materialize.min.js"></script>
+
+  <script>if (window.module) module = window.module;</script>
+
+
+
+
+  <ul id="slide-out" class="side-nav fixed">
+    <li class="logo">
+      <a id="logo-container" class="brand-logo" href="/">Helio</a>
+    </li>
+    <li><a href="mainWindows.html">Dashboard</a></li>
+    <li><a href="product_tab.html">Product info.</a></li>
+    <li><a href="#!">Availability</a></li>
+    <a href="#" data-activates="slide-out" class="button-collapse"><i class="mdi-navigation-menu"></i></a>
+  </ul>
+
+<header>
+
+  <nav>
+     <div class="nav-wrapper blue darken-1">
+       <form id="search_form">
+         <div class="input-field">
+           <input id="search" type="search" required placeholder="Insert ASIN">
+           <i class="material-icons">clear</i>
+         </div>
+       </form>
+     </div>
+  </nav>
+
+</header>
+
+  <script>
+    $(document).ready(function() {
+
+      $('.button-collapse').sideNav({
+          menuWidth: 180, // Default is 240
+          edge: 'left', // Choose the horizontal origin
+          closeOnClick: true // Closes side-nav on <a> clicks, useful for Angular/Meteor
+        }
+      );
+
+
+
+      $("#search_form").submit(function() {
+        var asin = $('#search').val();
+        //Download the image
+        $.ajax({
+          type: "GET",
+          url: "https://selection.amazon.com/productImages?merchantName=amazon_es&asins="+asin+"&styleCode=_SL200_",
+          data: {
+            merchantName: "amazon_es",
+            asins: asin,
+            styleCode: "_SL200_"
+          },
+          success: function(data) {
+             // here we gather the image url and we update the source of the image
+            $('#summary').html(data);
+            $("#asin_image").attr("src",data[0]);
+          }
+        });
+        //Download the selection central global attributes
+        $.ajax({
+          type: "GET",
+          url: "https://selection.amazon.com/publishDataJson",
+          data: {
+            merchantName: "amazon_es",
+            asins: asin
+          },
+          dataType: "json",
+          async: true,
+          success: function(data) {
+            console.log(data);
+             //here we first parse the JSON file.
+            console.log(data["0"].publishAttributes.product.item_name["0"].value);
+
+
+            var title_name_parsed = data["0"].publishAttributes.product.item_name["0"].value;
+            //Eans, potential array
+            //var EANs_parsed = ["0"].publishAttributes.product.ean;
+
+            //var IPQ_parsed = data["0"].publishAttributes.product.item_name["0"].value;
+            var repcat_status_parsed = "Rep. Cat. -> " + data["0"].publishAttributes.product.replenishment_category["0"].value;
+
+
+
+            $("#asin_title").html(title_name_parsed);
+            $("#asin_repCat").html(repcat_status_parsed);
+            $("#asin_detail_page_url").attr("href","https://www.amazon.es/gp/product/"+asin);
+          }
+        });
+
+        //Alaska infromation
+        $.ajax({
+          type: "GET",
+          url: "https://alaska-eu.amazon.com/index.html?viewtype=summaryview&use_scrollbars=&fnsku_simple="+asin+"&marketplaceid=44551&merchantid=695831032&AvailData=Get+Availability+Data",
+          async: true,
+          success: function(data) {
+            console.log(data);
+
+            //Here we first download the HTMl data
+            //Then we use a DOM parser from jQuery in order to retrieve the current Net inventory
+
+             //here we first parse the JSON file.
+            //var title_name_parsed = data["0"].publishAttributes.product.item_name["0"].value;
+            //Eans, potential array
+            //var EANs_parsed = ["0"].publishAttributes.product.ean;
+
+            //var IPQ_parsed = data["0"].publishAttributes.product.item_name["0"].value;
+            //var repcat_status_parsed = "Rep. Cat. -> " + data["0"].publishAttributes.product.replenishment_category["0"].value;
+
+            //$("#asin_title").html(title_name_parsed);
+            //$("#asin_repCat").html(repcat_status_parsed);
+            //$("#asin_detail_page_url").attr("href","https://www.amazon.es/gp/product/"+asin);
+          }
+        });
+
+      });
+    });
+
+  </script>
+
+  <script>
+    const electron = require('electron');
+    const {ipcRenderer} = electron;
+    const form = document.querySelector('form');
+
+    form.addEventListener('submit', submitForm);
+
+    function submitForm(e){
+      e.preventDefault();
+      const item = document.querySelector('#search').value;
+      console.log(item);
+      ipcRenderer.send('search:add', item);
+    }
+  </script>
+
+
+        <!-- <a class="brand-logo center"><i class="material-icons">content_copy</i>Asin data</a> -->
+
+
+<main>
+
+</br>
+
+
+
+
+
+<div class="row">
+  <div class="col s12 m6">
+    <ul class="collection">
+      <li class="collection-item avatar">
+        <img id="asin_image" src="./assets/icons/placeholders/camera_image.png" alt="" class="circle">
+        <span id="asin_title" class="title">Title</span>
+        <p><a id="asin_detail_page_url" target="_blank" href="#!">Detail page</a></p>
+        <p id="asin_repCat">Rep. Cat.</p>
+        <p id="asin_IPQ">IPQ:</p>
+        <p id="asin_CP">CP:</p>
+      </li>
+    </ul>
+  </div>
+</div>
+
+    <div class="row">
+      <div class="col s12 m6">
+        <div class="card">
+          <div class="card-content">
+            <span id="asin_Alaska" class="card-title">Product information</span>
+          </div>
+          <div class="card-action">
+            <a href="#">CTRL+ALT+L</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col s12 m6">
+        <div class="card">
+          <div class="card-content">
+            <span class="card-title">Price Information</span>
+            <p>Here comes CP information, Current Published price, etc</p>
+          </div>
+          <div class="card-action">
+            <a href="#">CTRL+ALT+P</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+    <div class="row">
+      <div class="col s12 m6">
+        <div class="card">
+          <div class="card-content">
+            <span id="asin_Alaska" class="card-title">IPC:</span>
+          </div>
+          <div class="card-action">
+            <a href="#">CTRL+ALT+L</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="col s12 m6">
+        <div class="card">
+          <div class="card-content">
+            <span class="card-title">Keepa</span>
+            <p>Keepa data</p>
+          </div>
+          <div class="card-action">
+            <a href="#">CTRL+ALT+P</a>
+          </div>
+        </div>
+      </div>
+    </div>
+
+
+  </main>
+
+
+<footer>
+      <div class="fixed-action-btn toolbar">
+        <a class="btn-floating btn-large red">
+          <i class="large material-icons">link</i>
+        </a>
+        <ul>
+          <li class="waves-effect waves-light"><a href="#!">Selection Central</a></li>
+          <li class="waves-effect waves-light"><a href="#!">IPC</a></li>
+          <li class="waves-effect waves-light"><a href="#!">Asinstat</a></li>
+          <li class="waves-effect waves-light"><a href="#!">Hazmat</a></li>
+        </ul>
+      </div>
+
+
+  </footer>
+
+
+
+
+<!-- <ul></ul> -->
+
+
+
+</body>
+
+</html>
