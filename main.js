@@ -1,10 +1,16 @@
 const electron = require('electron');
 const url = require('url');
 const path = require('path');
-const {autoUpdater} = require("electron-updater");
+
 //const username = require('username');
 
 const {app, BrowserWindow, Menu, ipcMain,dialog,globalShortcut,clipboard,shell} = electron;
+const autoUpdater = require("electron-updater");
+
+if (handleSquirrelEvent(app)) {
+    // squirrel event handled and app will exit in 1000ms, so don't do anything else
+    return;
+}
 
 /*
 
@@ -76,6 +82,8 @@ let currentASINselected;
 
 // Listen for app to be ready
 app.on('ready', function(){
+
+
   //create new window
   mainWindow = new BrowserWindow({
     width: 1300,
@@ -83,6 +91,12 @@ app.on('ready', function(){
     webPreferences: {webSecurity: false},
     title:'Helios'
   });
+
+  //if (process.env.NODE_ENV === 'development'){
+
+  //}else{
+    autoUpdater.checkForUpdates();
+  //}
 
   //get username
 
@@ -171,10 +185,19 @@ app.on('ready', function(){
     shell.openExternal(url_shortcut);
   })
 
-
-  autoUpdater.checkForUpdates();
-
 });
+
+
+
+// when the update has been downloaded and is ready to be installed, notify the BrowserWindow
+autoUpdater.on('update-downloaded', (info) => {
+    win.webContents.send('updateReady')
+});
+
+// when receiving a quitAndInstall signal, quit and install the new version ;)
+ipcMain.on("quitAndInstall", (event, arg) => {
+    autoUpdater.quitAndInstall();
+})
 
 app.on('will-quit', function () {
   globalShortcut.unregisterAll()
@@ -261,12 +284,67 @@ if(process.env.NODE_ENV !== 'production'){
     ]
   });
 }
-// when the update has been downloaded and is ready to be installed, notify the BrowserWindow
-autoUpdater.on('update-downloaded', (info) => {
-    win.webContents.send('updateReady')
-});
 
-// when receiving a quitAndInstall signal, quit and install the new version ;)
-ipcMain.on("quitAndInstall", (event, arg) => {
-    autoUpdater.quitAndInstall();
-})
+function handleSquirrelEvent(application) {
+    if (process.argv.length === 1) {
+        return false;
+    }
+
+    const ChildProcess = require('child_process');
+    const path = require('path');
+
+    const appFolder = path.resolve(process.execPath, '..');
+    const rootAtomFolder = path.resolve(appFolder, '..');
+    const updateDotExe = path.resolve(path.join(rootAtomFolder, 'Update.exe'));
+    const exeName = path.basename(process.execPath);
+
+    const spawn = function(command, args) {
+        let spawnedProcess, error;
+
+        try {
+            spawnedProcess = ChildProcess.spawn(command, args, {
+                detached: true
+            });
+        } catch (error) {}
+
+        return spawnedProcess;
+    };
+
+    const spawnUpdate = function(args) {
+        return spawn(updateDotExe, args);
+    };
+
+    const squirrelEvent = process.argv[1];
+    switch (squirrelEvent) {
+        case '--squirrel-install':
+        case '--squirrel-updated':
+            // Optionally do things such as:
+            // - Add your .exe to the PATH
+            // - Write to the registry for things like file associations and
+            //   explorer context menus
+
+            // Install desktop and start menu shortcuts
+            spawnUpdate(['--createShortcut', exeName]);
+
+            setTimeout(application.quit, 1000);
+            return true;
+
+        case '--squirrel-uninstall':
+            // Undo anything you did in the --squirrel-install and
+            // --squirrel-updated handlers
+
+            // Remove desktop and start menu shortcuts
+            spawnUpdate(['--removeShortcut', exeName]);
+
+            setTimeout(application.quit, 1000);
+            return true;
+
+        case '--squirrel-obsolete':
+            // This is called on the outgoing version of your app before
+            // we update to the new version - it's the opposite of
+            // --squirrel-updated
+
+            application.quit();
+            return true;
+    }
+};
